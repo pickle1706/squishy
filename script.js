@@ -5,7 +5,8 @@ const DEFAULT_PRODUCTS = [
         price: 15000,
         description: "Una fresa súper suave y achuchable.",
         category: "COMIDA",
-        emoji: "🍓"
+        emoji: "🍓",
+        image: ""
     },
     {
         id: "p2",
@@ -13,7 +14,8 @@ const DEFAULT_PRODUCTS = [
         price: 18000,
         description: "Un gatito adorable para apretar.",
         category: "ANIMALITOS",
-        emoji: "🐱"
+        emoji: "🐱",
+        image: ""
     },
     {
         id: "p3",
@@ -21,7 +23,8 @@ const DEFAULT_PRODUCTS = [
         price: 16000,
         description: "Una donita suave y súper cute.",
         category: "COMIDA",
-        emoji: "🍩"
+        emoji: "🍩",
+        image: ""
     }
 ];
 
@@ -63,6 +66,7 @@ function saveProducts() {
     localStorage.setItem("squiduchProducts", JSON.stringify(products));
 }
 
+// Función para leer la imagen y convertirla a Base64
 function readImage(file) {
     return new Promise((resolve, reject) => {
         if (!file) {
@@ -71,13 +75,12 @@ function readImage(file) {
         }
 
         const reader = new FileReader();
-
         reader.onload = () => resolve(reader.result);
         reader.onerror = () => reject(reader.error);
-
         reader.readAsDataURL(file);
     });
 }
+
 function renderProducts() {
     if (!products.length) {
         productContainer.innerHTML = `
@@ -92,7 +95,13 @@ function renderProducts() {
 
     productContainer.innerHTML = products.map(product => `
         <article class="product-card">
-            <div class="product-image ${categoryClass(product.category)}">${escapeHTML(product.emoji)}</div>
+            <div class="product-image ${categoryClass(product.category)}">
+                ${
+                    product.image
+                        ? `<img src="${product.image}" alt="${escapeHTML(product.name)}">`
+                        : escapeHTML(product.emoji)
+                }
+            </div>
             <div class="product-info">
                 <span class="product-category">${escapeHTML(product.category)}</span>
                 <h3>${escapeHTML(product.name)}</h3>
@@ -129,7 +138,13 @@ function renderAdminProducts() {
 
     adminProductList.innerHTML = products.map(product => `
         <div class="admin-product">
-            <div class="admin-product-icon">${escapeHTML(product.emoji)}</div>
+            <div class="admin-product-icon">
+                ${
+                    product.image 
+                        ? `<img src="${product.image}" alt="${escapeHTML(product.name)}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">`
+                        : escapeHTML(product.emoji)
+                }
+            </div>
             <div class="admin-product-info">
                 <strong>${escapeHTML(product.name)}</strong>
                 <span>${money(product.price)} · ${escapeHTML(product.category)}</span>
@@ -152,20 +167,9 @@ function renderAdminProducts() {
 }
 
 async function addProduct(data) {
-
     let imageData = "";
-
-    // Si se seleccionó una imagen
     if (data.imageFile) {
-        imageData = await new Promise((resolve, reject) => {
-
-            const reader = new FileReader();
-
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(reader.error);
-
-            reader.readAsDataURL(data.imageFile);
-        });
+        imageData = await readImage(data.imageFile);
     }
 
     products.push({
@@ -182,10 +186,8 @@ async function addProduct(data) {
     renderProducts();
     renderAdminProducts();
     resetForm();
-
     showMessage("✅ Producto agregado correctamente");
 }
-
 
 function editProduct(id) {
     const product = products.find(item => item.id === id);
@@ -204,15 +206,23 @@ function editProduct(id) {
     productName.focus();
 }
 
-function updateProduct(id, data) {
+async function updateProduct(id, data) {
     const product = products.find(item => item.id === id);
     if (!product) return;
+
+    // Mantiene la imagen actual si no se sube una nueva
+    let imageData = product.image || "";
+
+    if (data.imageFile) {
+        imageData = await readImage(data.imageFile);
+    }
 
     product.name = data.name;
     product.price = Number(data.price);
     product.description = data.description;
     product.category = data.category;
     product.emoji = data.emoji || "🧸";
+    product.image = imageData;
 
     saveProducts();
     renderProducts();
@@ -246,7 +256,7 @@ function resetForm() {
     cancelEdit.hidden = true;
 }
 
-productForm.addEventListener("submit", event => {
+productForm.addEventListener("submit", async event => {
     event.preventDefault();
 
     const data = {
@@ -255,7 +265,7 @@ productForm.addEventListener("submit", event => {
         description: productDescription.value.trim(),
         category: productCategory.value,
         emoji: productEmoji.value.trim(),
-        imageFile: document.getElementById("productImage").files[0]
+        imageFile: productImage.files[0]
     };
 
     if (!data.name || !data.price || !data.description) {
@@ -264,9 +274,9 @@ productForm.addEventListener("submit", event => {
     }
 
     if (productId.value) {
-        updateProduct(productId.value, data);
+        await updateProduct(productId.value, data);
     } else {
-        addProduct(data);
+        await addProduct(data);
     }
 });
 
@@ -354,7 +364,13 @@ function renderCart() {
 
     cartItems.innerHTML = cart.map(item => `
         <div class="cart-item">
-            <div class="cart-item-icon">${escapeHTML(item.emoji)}</div>
+            <div class="cart-item-icon">
+                ${
+                    item.image 
+                        ? `<img src="${item.image}" alt="${escapeHTML(item.name)}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">`
+                        : escapeHTML(item.emoji)
+                }
+            </div>
             <div class="cart-item-info">
                 <h3>${escapeHTML(item.name)}</h3>
                 <span>${money(item.price)} c/u</span>
@@ -427,4 +443,4 @@ function escapeHTML(value) {
 
 renderProducts();
 renderAdminProducts();
-renderCart();
+renderCart();s
