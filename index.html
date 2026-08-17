@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squiduch | Squishies adorables</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="navbar">
+    <a href="#" class="logo">SQUIDUCH 🧸</a>
+
+    <nav>
+        <a href="#inicio">Inicio</a>
+        <a href="#tienda">Tienda</a>
+        <a href="#ofertas">Ofertas</a>
+        <a href="#nosotros">Nosotros</a>
+    </nav>
+
+    <div class="nav-actions">
+        <button class="admin-button" id="adminButton" type="button">⚙️ Administrador</button>
+        <button class="cart-button" id="cartButton" type="button">
+            🛒 <span id="cartCount">0</span>
+        </button>
+    </div>
+</header>
+
+<main>
+    <section class="hero" id="inicio">
+        <div class="hero-text">
+            <span class="small-title">✨ BIENVENIDO A SQUIDUCH ✨</span>
+            <h1>Squishies que dan <span>ganas de abrazar</span> 💕</h1>
+            <p>Descubre squishies súper suaves, adorables y perfectos para coleccionar o regalar.</p>
+            <a href="#tienda" class="main-button">Ver squishies 🛍️</a>
+        </div>
+
+        <div class="hero-squishy">
+            <div class="squishy-face">🧸</div>
+            <div class="bubble bubble-one">💗</div>
+            <div class="bubble bubble-two">✨</div>
+            <div class="bubble bubble-three">💜</div>
+        </div>
+    </section>
+
+    <section class="categories">
+        <h2>Encuentra tu favorito 💕</h2>
+        <div class="category-container">
+            <div class="category pink"><span>🍓</span><h3>Comida</h3><p>Squishies deliciosamente adorables</p></div>
+            <div class="category purple"><span>🐱</span><h3>Animalitos</h3><p>Pequeños amigos súper suaves</p></div>
+            <div class="category blue"><span>🌈</span><h3>Fantasía</h3><p>Un mundo lleno de color</p></div>
+        </div>
+    </section>
+
+    <section class="products" id="tienda">
+        <div class="section-title">
+            <span>⭐ NUESTROS FAVORITOS ⭐</span>
+            <h2>Los más vendidos</h2>
+            <p>Estos squishies están buscando un nuevo hogar 🏠💕</p>
+        </div>
+
+        <div class="product-container" id="productContainer"></div>
+    </section>
+
+    <section class="offer" id="ofertas">
+        <div>
+            <span>🎁 OFERTA ESPECIAL</span>
+            <h2>¡Lleva 3 squishies y paga menos!</h2>
+            <p>Crea tu propio combo y disfruta de tus favoritos.</p>
+            <button class="offer-button" id="comboButton" type="button">Quiero mi combo 💕</button>
+        </div>
+        <div class="offer-emoji">🧸🍓🐱</div>
+    </section>
+
+    <section class="why-us" id="nosotros">
+        <div class="section-title">
+            <span>💕 POR QUÉ SQUIDUCH</span>
+            <h2>Pequeños squishies, grandes sonrisas</h2>
+        </div>
+
+        <div class="benefits">
+            <div class="benefit"><div>🧸</div><h3>Súper suaves</h3><p>Squishies hechos para apretar una y otra vez.</p></div>
+            <div class="benefit"><div>🎁</div><h3>Perfectos para regalar</h3><p>Un detalle adorable para cualquier ocasión.</p></div>
+            <div class="benefit"><div>📦</div><h3>Envíos seguros</h3><p>Preparamos cada pedido con mucho cariño.</p></div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <div class="footer-logo">SQUIDUCH 🧸</div>
+    <p>Squishies adorables para momentos felices 💕</p>
+    <div class="socials">Instagram · TikTok · WhatsApp</div>
+    <small>© 2026 Squiduch. Todos los derechos reservados.</small>
+</footer>
+
+<!-- CARRITO -->
+<div class="cart-overlay" id="cartOverlay"></div>
+<aside class="cart-drawer" id="cartDrawer" aria-label="Carrito de compras">
+    <div class="cart-header">
+        <div><span class="cart-label">🛍️ TU COMPRA</span><h2>Mi carrito</h2></div>
+        <button class="close-cart" id="closeCart" type="button">×</button>
+    </div>
+    <div class="cart-items" id="cartItems">
+        <div class="empty-cart"><div>🛒</div><h3>Tu carrito está vacío</h3><p>Agrega un squishy para comenzar tu compra.</p></div>
+    </div>
+    <div class="cart-footer">
+        <div class="cart-total"><span>Total</span><strong id="cartTotal">$0</strong></div>
+        <button class="checkout-button" id="checkoutButton" type="button" disabled>Realizar pedido 💕</button>
+        <button class="clear-cart" id="clearCart" type="button">Vaciar carrito</button>
+    </div>
+</aside>
+
+<!-- PANEL ADMINISTRADOR -->
+<div class="admin-overlay" id="adminOverlay"></div>
+<aside class="admin-panel" id="adminPanel">
+    <div class="admin-header">
+        <div>
+            <span>⚙️ PANEL DE CONTROL</span>
+            <h2>Administrador</h2>
+        </div>
+        <button class="close-admin" id="closeAdmin" type="button">×</button>
+    </div>
+
+    <div class="admin-content">
+        <div class="admin-info">
+            <strong>Gestión de productos</strong>
+            <p>Agrega nuevos artículos o modifica los productos existentes.</p>
+        </div>
+
+        <form id="productForm" class="product-form">
+            <input type="hidden" id="productId">
+            <label for="productImage">Imagen del producto</label>
+            <input type="file" id="productImage" accept="image/*">
+
+            <label for="productName">Nombre del producto</label>
+            <input id="productName" type="text" placeholder="Ej. Squishy Panda" required>
+
+            <label for="productPrice">Precio</label>
+            <input id="productPrice" type="number" min="0" step="100" placeholder="Ej. 20000" required>
+
+            <label for="productDescription">Descripción</label>
+            <textarea id="productDescription" rows="3" placeholder="Describe el producto..." required></textarea>
+
+            <label for="productCategory">Categoría</label>
+            <select id="productCategory">
+                <option value="COMIDA">Comida</option>
+                <option value="ANIMALITOS">Animalitos</option>
+                <option value="FANTASÍA">Fantasía</option>
+                <option value="OTROS">Otros</option>
+            </select>
+
+            <label for="productEmoji">Icono del producto</label>
+            <input id="productEmoji" type="text" maxlength="4" placeholder="🧸" value="🧸">
+
+            <div class="form-buttons">
+                <button class="save-product" type="submit" id="saveProduct">Agregar producto</button>
+                <button class="cancel-edit" type="button" id="cancelEdit" hidden>Cancelar edición</button>
+            </div>
+        </form>
+
+        <div class="admin-products-title">
+            <h3>Productos registrados</h3>
+            <span id="adminProductCount">0</span>
+        </div>
+
+        <div class="admin-product-list" id="adminProductList"></div>
+    </div>
+</aside>
+
+<div class="cart-message" id="cartMessage">🛒 ¡Producto agregado al carrito!</div>
+
+<script src="script.js"></script>
+</body>
+</html>
