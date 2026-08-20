@@ -32,7 +32,6 @@ const adminProductCount = document.getElementById("adminProductCount");
 
 const money = value => "$" + Number(value).toLocaleString("es-CO");
 
-
 // Importar Firebase desde los CDNs oficiales para navegadores
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -53,9 +52,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// --- FUNCIONES PARA TU TIENDA ---
+// --- FUNCIONES DE FIREBASE ---
 
-// 1. Guardar productos en Firebase (ej. cuando agregues o edites un producto)
 async function guardarProductosEnFirebase(listaProductos) {
     try {
         await set(ref(db, 'productos/'), listaProductos);
@@ -65,23 +63,25 @@ async function guardarProductosEnFirebase(listaProductos) {
     }
 }
 
-// 2. Cargar productos desde Firebase (ej. cuando la página se abre)
 async function cargarProductosDeFirebase() {
     try {
         const snapshot = await get(child(ref(db), 'productos/'));
         if (snapshot.exists()) {
-            return snapshot.val(); // Retorna el array u objeto de productos
+            const data = snapshot.val();
+            // Firebase puede devolver un array o un objeto según cómo se guardó, aseguramos que sea array
+            products = Array.isArray(data) ? data : Object.values(data);
         } else {
-            console.log("No hay productos guardados todavía.");
-            return [];
+            products = [];
         }
+        renderProducts();
+        renderAdminProducts();
     } catch (error) {
         console.error("Error al cargar:", error);
-        return [];
+        products = [];
+        renderProducts();
+        renderAdminProducts();
     }
 }
-
-
 
 // Función para leer la imagen y convertirla a Base64
 function readImage(file) {
@@ -96,31 +96,6 @@ function readImage(file) {
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
     });
-}
-
-// Cargar productos desde la API de Django
-async function fetchProducts() {
-    try {
-        const response = await fetch('http://127.0.0.1:8000/api/productos/');
-        if (response.ok) {
-            const data = await response.json();
-            // Adaptamos los campos del backend (español) al frontend
-            products = data.map(item => ({
-                id: item.id_producto || item.id,
-                name: item.nombre,
-                price: Number(item.precio),
-                description: item.descripcion,
-                category: item.categoria,
-                emoji: item.emoji || "🧸",
-                image: item.imagen || "",
-                stock: item.stock || 10
-            }));
-            renderProducts();
-            renderAdminProducts();
-        }
-    } catch (error) {
-        console.error("Error al conectar con la API de Django:", error);
-    }
 }
 
 function renderProducts() {
@@ -141,7 +116,7 @@ function renderProducts() {
                 ${
                     product.image
                         ? `<img src="${product.image}" alt="${escapeHTML(product.name)}">`
-                        : escapeHTML(product.emoji)
+                        : escapeHTML(product.emoji || "🧸")
                 }
             </div>
             <div class="product-info">
@@ -155,13 +130,6 @@ function renderProducts() {
             </div>
         </article>
     `).join("");
-
-    document.querySelectorAll(".add-button").forEach(button => {
-        button.addEventListener("click", () => {
-            const product = products.find(item => String(item.id) === String(button.dataset.id));
-            if (product) addToCart(product);
-        });
-    });
 }
 
 function categoryClass(category) {
@@ -184,7 +152,7 @@ function renderAdminProducts() {
                 ${
                     product.image 
                         ? `<img src="${product.image}" alt="${escapeHTML(product.name)}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">`
-                        : escapeHTML(product.emoji)
+                        : escapeHTML(product.emoji || "🧸")
                 }
             </div>
             <div class="admin-product-info">
@@ -214,32 +182,23 @@ async function addProduct(data) {
         imageData = await readImage(data.imageFile);
     }
 
-    const payload = {
-        nombre: data.name,
-        precio: data.price,
-        descripcion: data.description,
-        categoria: data.category,
-        stock: 10,
-        imagen: imageData
+    const newProduct = {
+        id: Date.now().toString(), // ID único basado en tiempo
+        name: data.name,
+        price: Number(data.price),
+        description: data.description,
+        category: data.category,
+        emoji: data.emoji || "🧸",
+        image: imageData,
+        stock: 10
     };
 
-    try {
-        const response = await fetch('http://127.0.0.1:8000/api/productos/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-            await fetchProducts(); // Recarga la lista desde Django
-            resetForm();
-            showMessage("✅ Producto guardado en la base de datos");
-        } else {
-            showMessage("⚠️ Error al guardar en el servidor");
-        }
-    } catch (error) {
-        console.error("Error:", error);
-    }
+    products.push(newProduct);
+    await guardarProductosEnFirebase(products);
+    renderProducts();
+    renderAdminProducts();
+    resetForm();
+    showMessage("✅ Producto guardado en la nube");
 }
 
 function editProduct(id) {
@@ -251,7 +210,7 @@ function editProduct(id) {
     productPrice.value = product.price;
     productDescription.value = product.description;
     productCategory.value = product.category;
-    productEmoji.value = product.emoji;
+    productEmoji.value = product.emoji || "🧸";
 
     saveProduct.textContent = "Guardar cambios";
     cancelEdit.hidden = false;
@@ -268,32 +227,26 @@ async function updateProduct(id, data) {
         if (existing) imageData = existing.image;
     }
 
-    const payload = {
-        nombre: data.name,
-        precio: data.price,
-        descripcion: data.description,
-        categoria: data.category,
-        stock: 10,
-        imagen: imageData
-    };
-
-    try {
-        const response = await fetch(`http://127.0.0.1:8000/api/productos/${id}/`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-            await fetchProducts();
-            resetForm();
-            showMessage("✏️ Producto modificado correctamente");
-        } else {
-            showMessage("⚠️ Error al actualizar");
+    products = products.map(item => {
+        if (String(item.id) === String(id)) {
+            return {
+                ...item,
+                name: data.name,
+                price: Number(data.price),
+                description: data.description,
+                category: data.category,
+                emoji: data.emoji || "🧸",
+                image: imageData
+            };
         }
-    } catch (error) {
-        console.error("Error al actualizar:", error);
-    }
+        return item;
+    });
+
+    await guardarProductosEnFirebase(products);
+    renderProducts();
+    renderAdminProducts();
+    resetForm();
+    showMessage("✏️ Producto modificado correctamente");
 }
 
 async function deleteProduct(id) {
@@ -303,22 +256,14 @@ async function deleteProduct(id) {
     const confirmed = confirm(`¿Seguro que deseas eliminar "${product.name}"?`);
     if (!confirmed) return;
 
-    try {
-        const response = await fetch(`http://127.0.0.1:8000/api/productos/${id}/`, {
-            method: 'DELETE',
-        });
+    products = products.filter(item => String(item.id) !== String(id));
+    cart = cart.filter(item => String(item.id) !== String(id));
 
-        if (response.ok || response.status === 204) {
-            products = products.filter(item => String(item.id) !== String(id));
-            cart = cart.filter(item => String(item.id) !== String(id));
-            renderProducts();
-            renderAdminProducts();
-            renderCart();
-            showMessage("🗑️ Producto eliminado de la base de datos");
-        }
-    } catch (error) {
-        console.error("Error al eliminar:", error);
-    }
+    await guardarProductosEnFirebase(products);
+    renderProducts();
+    renderAdminProducts();
+    renderCart();
+    showMessage("🗑️ Producto eliminado");
 }
 
 function resetForm() {
@@ -397,6 +342,15 @@ function addToCart(product) {
     showMessage(`🛒 ${product.name} agregado al carrito`);
 }
 
+// Delegación de eventos para los botones de agregar producto dinámicos
+document.addEventListener("click", event => {
+    const button = event.target.closest(".add-button");
+    if (!button) return;
+
+    const product = products.find(item => String(item.id) === String(button.dataset.id));
+    if (product) addToCart(product);
+});
+
 function changeQuantity(id, amount) {
     const item = cart.find(product => String(product.id) === String(id));
     if (!item) return;
@@ -441,7 +395,7 @@ function renderCart() {
                 ${
                     item.image 
                         ? `<img src="${item.image}" alt="${escapeHTML(item.name)}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">`
-                        : escapeHTML(item.emoji)
+                        : escapeHTML(item.emoji || "🧸")
                 }
             </div>
             <div class="cart-item-info">
@@ -501,7 +455,7 @@ function showMessage(text) {
 }
 
 function escapeHTML(value) {
-    return String(value)
+    return String(value ?? "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
@@ -509,6 +463,6 @@ function escapeHTML(value) {
         .replaceAll("'", "&#039;");
 }
 
-// Inicializar cargando desde la API de Django
-fetchProducts();
+// Inicializar cargando los productos desde Firebase y el carrito vacío
+cargarProductosDeFirebase();
 renderCart();
