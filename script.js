@@ -1,34 +1,4 @@
-const DEFAULT_PRODUCTS = [
-    {
-        id: "p1",
-        name: "Squishy Fresa",
-        price: 15000,
-        description: "Una fresa súper suave y achuchable.",
-        category: "COMIDA",
-        emoji: "🍓",
-        image: ""
-    },
-    {
-        id: "p2",
-        name: "Squishy Gatito",
-        price: 18000,
-        description: "Un gatito adorable para apretar.",
-        category: "ANIMALITOS",
-        emoji: "🐱",
-        image: ""
-    },
-    {
-        id: "p3",
-        name: "Squishy Donita",
-        price: 16000,
-        description: "Una donita suave y súper cute.",
-        category: "COMIDA",
-        emoji: "🍩",
-        image: ""
-    }
-];
-
-let products = JSON.parse(localStorage.getItem("squiduchProducts")) || DEFAULT_PRODUCTS;
+let products = [];
 let cart = [];
 
 const productContainer = document.getElementById("productContainer");
@@ -62,10 +32,6 @@ const adminProductCount = document.getElementById("adminProductCount");
 
 const money = value => "$" + Number(value).toLocaleString("es-CO");
 
-function saveProducts() {
-    localStorage.setItem("squiduchProducts", JSON.stringify(products));
-}
-
 // Función para leer la imagen y convertirla a Base64
 function readImage(file) {
     return new Promise((resolve, reject) => {
@@ -79,6 +45,31 @@ function readImage(file) {
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
     });
+}
+
+// Cargar productos desde la API de Django
+async function fetchProducts() {
+    try {
+        const response = await fetch('http://127.0.0.1:8000/api/productos/');
+        if (response.ok) {
+            const data = await response.json();
+            // Adaptamos los campos del backend (español) al frontend
+            products = data.map(item => ({
+                id: item.id_producto || item.id,
+                name: item.nombre,
+                price: Number(item.precio),
+                description: item.descripcion,
+                category: item.categoria,
+                emoji: item.emoji || "🧸",
+                image: item.imagen || "",
+                stock: item.stock || 10
+            }));
+            renderProducts();
+            renderAdminProducts();
+        }
+    } catch (error) {
+        console.error("Error al conectar con la API de Django:", error);
+    }
 }
 
 function renderProducts() {
@@ -116,7 +107,7 @@ function renderProducts() {
 
     document.querySelectorAll(".add-button").forEach(button => {
         button.addEventListener("click", () => {
-            const product = products.find(item => item.id === button.dataset.id);
+            const product = products.find(item => String(item.id) === String(button.dataset.id));
             if (product) addToCart(product);
         });
     });
@@ -172,25 +163,36 @@ async function addProduct(data) {
         imageData = await readImage(data.imageFile);
     }
 
-    products.push({
-        id: "p" + Date.now(),
-        name: data.name,
-        price: Number(data.price),
-        description: data.description,
-        category: data.category,
-        emoji: data.emoji || "🧸",
-        image: imageData
-    });
+    const payload = {
+        nombre: data.name,
+        precio: data.price,
+        descripcion: data.description,
+        categoria: data.category,
+        stock: 10,
+        imagen: imageData
+    };
 
-    saveProducts();
-    renderProducts();
-    renderAdminProducts();
-    resetForm();
-    showMessage("✅ Producto agregado correctamente");
+    try {
+        const response = await fetch('http://127.0.0.1:8000/api/productos/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            await fetchProducts(); // Recarga la lista desde Django
+            resetForm();
+            showMessage("✅ Producto guardado en la base de datos");
+        } else {
+            showMessage("⚠️ Error al guardar en el servidor");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+    }
 }
 
 function editProduct(id) {
-    const product = products.find(item => item.id === id);
+    const product = products.find(item => String(item.id) === String(id));
     if (!product) return;
 
     productId.value = product.id;
@@ -207,45 +209,65 @@ function editProduct(id) {
 }
 
 async function updateProduct(id, data) {
-    const product = products.find(item => item.id === id);
-    if (!product) return;
-
-    // Mantiene la imagen actual si no se sube una nueva
-    let imageData = product.image || "";
-
+    let imageData = "";
     if (data.imageFile) {
         imageData = await readImage(data.imageFile);
+    } else {
+        const existing = products.find(item => String(item.id) === String(id));
+        if (existing) imageData = existing.image;
     }
 
-    product.name = data.name;
-    product.price = Number(data.price);
-    product.description = data.description;
-    product.category = data.category;
-    product.emoji = data.emoji || "🧸";
-    product.image = imageData;
+    const payload = {
+        nombre: data.name,
+        precio: data.price,
+        descripcion: data.description,
+        categoria: data.category,
+        stock: 10,
+        imagen: imageData
+    };
 
-    saveProducts();
-    renderProducts();
-    renderAdminProducts();
-    resetForm();
-    showMessage("✏️ Producto modificado correctamente");
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/api/productos/${id}/`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            await fetchProducts();
+            resetForm();
+            showMessage("✏️ Producto modificado correctamente");
+        } else {
+            showMessage("⚠️ Error al actualizar");
+        }
+    } catch (error) {
+        console.error("Error al actualizar:", error);
+    }
 }
 
-function deleteProduct(id) {
-    const product = products.find(item => item.id === id);
+async function deleteProduct(id) {
+    const product = products.find(item => String(item.id) === String(id));
     if (!product) return;
 
     const confirmed = confirm(`¿Seguro que deseas eliminar "${product.name}"?`);
     if (!confirmed) return;
 
-    products = products.filter(item => item.id !== id);
-    cart = cart.filter(item => item.id !== id);
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/api/productos/${id}/`, {
+            method: 'DELETE',
+        });
 
-    saveProducts();
-    renderProducts();
-    renderAdminProducts();
-    renderCart();
-    showMessage("🗑️ Producto eliminado");
+        if (response.ok || response.status === 204) {
+            products = products.filter(item => String(item.id) !== String(id));
+            cart = cart.filter(item => String(item.id) !== String(id));
+            renderProducts();
+            renderAdminProducts();
+            renderCart();
+            showMessage("🗑️ Producto eliminado de la base de datos");
+        }
+    } catch (error) {
+        console.error("Error al eliminar:", error);
+    }
 }
 
 function resetForm() {
@@ -312,7 +334,7 @@ closeCart.addEventListener("click", closeCartDrawer);
 cartOverlay.addEventListener("click", closeCartDrawer);
 
 function addToCart(product) {
-    const existing = cart.find(item => item.id === product.id);
+    const existing = cart.find(item => String(item.id) === String(product.id));
 
     if (existing) {
         existing.quantity++;
@@ -325,20 +347,20 @@ function addToCart(product) {
 }
 
 function changeQuantity(id, amount) {
-    const item = cart.find(product => product.id === id);
+    const item = cart.find(product => String(product.id) === String(id));
     if (!item) return;
 
     item.quantity += amount;
 
     if (item.quantity <= 0) {
-        cart = cart.filter(product => product.id !== id);
+        cart = cart.filter(product => String(product.id) !== String(id));
     }
 
     renderCart();
 }
 
 function removeItem(id) {
-    cart = cart.filter(product => product.id !== id);
+    cart = cart.filter(product => String(product.id) !== String(id));
     renderCart();
     showMessage("🗑️ Producto eliminado del carrito");
 }
@@ -413,11 +435,6 @@ checkoutButton.addEventListener("click", () => {
     showMessage(`✅ Pedido preparado por ${money(total)}`);
 });
 
-document.getElementById("comboButton").addEventListener("click", () => {
-    showMessage("🎁 ¡Elige 3 squishies para crear tu combo!");
-    document.getElementById("tienda").scrollIntoView({ behavior: "smooth" });
-});
-
 document.addEventListener("keydown", event => {
     if (event.key === "Escape") {
         closeCartDrawer();
@@ -441,6 +458,6 @@ function escapeHTML(value) {
         .replaceAll("'", "&#039;");
 }
 
-renderProducts();
-renderAdminProducts();
-renderCart();s
+// Inicializar cargando desde la API de Django
+fetchProducts();
+renderCart();
