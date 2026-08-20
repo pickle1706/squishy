@@ -32,6 +32,57 @@ const adminProductCount = document.getElementById("adminProductCount");
 
 const money = value => "$" + Number(value).toLocaleString("es-CO");
 
+
+// Importar Firebase desde los CDNs oficiales para navegadores
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+// Tu configuración de Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyDstbtvF8NRYa4eTCAljrPw6EGOTrdQi9g",
+  authDomain: "squishys.firebaseapp.com",
+  databaseURL: "https://squishys-default-rtdb.firebaseio.com",
+  projectId: "squishys",
+  storageBucket: "squishys.firebasestorage.app",
+  messagingSenderId: "485491477508",
+  appId: "1:485491477508:web:5d17a7580738702d2f3951",
+  measurementId: "G-FJ7E7DS8JN"
+};
+
+// Inicializar Firebase y la Base de Datos
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// --- FUNCIONES PARA TU TIENDA ---
+
+// 1. Guardar productos en Firebase (ej. cuando agregues o edites un producto)
+async function guardarProductosEnFirebase(listaProductos) {
+    try {
+        await set(ref(db, 'productos/'), listaProductos);
+        console.log("Productos guardados en la nube con éxito.");
+    } catch (error) {
+        console.error("Error al guardar:", error);
+    }
+}
+
+// 2. Cargar productos desde Firebase (ej. cuando la página se abre)
+async function cargarProductosDeFirebase() {
+    try {
+        const snapshot = await get(child(ref(db), 'productos/'));
+        if (snapshot.exists()) {
+            return snapshot.val(); // Retorna el array u objeto de productos
+        } else {
+            console.log("No hay productos guardados todavía.");
+            return [];
+        }
+    } catch (error) {
+        console.error("Error al cargar:", error);
+        return [];
+    }
+}
+
+
+
 // Función para leer la imagen y convertirla a Base64
 function readImage(file) {
     return new Promise((resolve, reject) => {
